@@ -1,18 +1,19 @@
+
 from galaxy.web.security import get_random_bytes
 from db_shell import *
 import sys
 import copy
-
 args = copy.copy(sys.argv[1:])
-sys.path.append("scripts")
-sys.path.append("lib")
-sys.argv[1:] = ["galaxy"]
+sys.path.append('scripts')
+sys.path.append('lib')
+sys.argv[1:] = ['galaxy']
 
-user = sa_session.query(User).enable_eagerloads(False).filter_by(email=args[0]).first()
+user = sa_session.query(User).enable_eagerloads(
+    False).filter_by(email=args[0]).first()
 if not user:
     u = User(email=args[0])
     u.set_password_cleartext(args[1])
-    u.username = args[0].split("@")[0]
+    u.username = args[0].split('@')[0]
     sa_session.add(u)
     sa_session.flush()
     apikey = APIKeys()
@@ -24,12 +25,14 @@ if not user:
     sa_session.add(apikey)
     sa_session.flush()
     role = Role(
-        name=u.email, description="Private Role for " + u.email, type=Role.types.PRIVATE
-    )
+        name=u.email,
+        description='Private Role for ' +
+        u.email,
+        type=Role.types.PRIVATE)
     sa_session.add(role)
     sa_session.flush()
     assoc = UserRoleAssociation(u, role)
     sa_session.add(assoc)
     sa_session.flush()
 else:
-    print("Email address %s already in use" % (args[0],), file=sys.stderr)
+    print >>sys.stderr, "Email address %s already in use" % (args[0],)

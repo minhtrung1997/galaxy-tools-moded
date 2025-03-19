@@ -17,28 +17,27 @@ def writestatus(statusfile, ipaddr, waiting):
     rows = []
     for ip in ipaddr:
         r = [ip]
-        id = ipaddr[ip].get("id")
-        index = ipaddr[ip].get("index", -1)
-        r.extend(["index", index])
-        cpus = ipaddr[ip].get("cpus", -1)
+        id = ipaddr[ip].get('id')
+        index = ipaddr[ip].get('index', -1)
+        r.extend(['index', index])
+        cpus = ipaddr[ip].get('cpus', -1)
         r.extend(["cpus", cpus])
-        running = ipaddr[ip].get("running", 0)
+        running = ipaddr[ip].get('running', 0)
         r.extend(["running", running])
-        starttime = ipaddr[ip].get("starttime")
+        starttime = ipaddr[ip].get('starttime')
         if starttime:
-            r.extend(
-                ["time_in_state", (datetime.datetime.now() - starttime).total_seconds()]
-            )
-        lasttime = ipaddr[ip].get("lasttime")
+            r.extend(["time_in_state",
+                      (datetime.datetime.now() - starttime).total_seconds()])
+        lasttime = ipaddr[ip].get('lasttime')
         if lasttime:
             r.extend(["lasttime", datetime.datetime.ctime(lasttime)])
         if id:
-            r.extend(["id", index])
+            r.extend(['id', index])
         rows.append(r)
     rows.append(["waiting", len(waiting)])
-    wh = open(statusfile, "w")
+    wh = open(statusfile, 'w')
     for r in rows:
-        print("\t".join(map(str, r)), file=wh)
+        print >>wh, "\t".join(map(str, r))
     wh.close()
 
 
@@ -62,15 +61,14 @@ def pulsar_destinations(app, tool_id, job):
         toremove = util.toremove(jobs)
         running = util.running(jobs)
         for ip in ipaddr:
-            ipaddr[ip]["running"] = running[ip]
+            ipaddr[ip]['running'] = running[ip]
 
         now = datetime.datetime.now()
         for k in list(ipaddr):
-            if "lasttime" in ipaddr[k] and (
-                (now - ipaddr[k]["lasttime"]) < datetime.timedelta(seconds=0)
-            ):
+            if 'lasttime' in ipaddr[k] and (
+                    (now - ipaddr[k]['lasttime']) < datetime.timedelta(seconds=0)):
                 del ipaddr[k]
-            elif ipaddr[k].get("running", 0) >= (ipaddr[k].get("cpus", 0) + 1):
+            elif ipaddr[k].get('running', 0) >= (ipaddr[k].get('cpus', 0) + 1):
                 del ipaddr[k]
 
         if len(ipaddr) == 0 or (len(waiting) > 0 and min(waiting) < job.id):
@@ -81,19 +79,15 @@ def pulsar_destinations(app, tool_id, job):
                 util.update_jobs(jobfile, toremove=toremove)
             raise JobNotReadyException()
 
-        newip = sorted(
-            list(ipaddr.items()),
-            key=lambda t: (
-                max(0, t[1].get("running", 0) + 1 - t[1].get("cpus", 0)),
-                t[1]["index"],
-            ),
-        )[0][0]
+        newip = sorted(ipaddr.items(), key=lambda t: (
+            max(0, t[1].get('running', 0) + 1 - t[1].get('cpus', 0)), t[1]['index']))[0][0]
 
         util.update_jobs(jobfile, dispatch=(job.id, newip), toremove=toremove)
 
     finally:
         joblock.release()
 
-    params = dict(url="http://%s:8913/" % (newip,), private_token="CPTAC_WinPulsar")
+    params = dict(url="http://%s:8913/" % (newip,),
+                  private_token="CPTAC_WinPulsar")
 
     return JobDestination(runner="pulsar", params=params)

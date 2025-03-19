@@ -2,10 +2,10 @@
 import sys
 import xml.etree.ElementTree as ET
 
-ET.register_namespace('', "http://psidev.info/psi/pi/mzIdentML/1.1")
+ET.register_namespace("", "http://psidev.info/psi/pi/mzIdentML/1.1")
 doc = ET.parse(sys.stdin)
 root = doc.getroot()
-ns = '{http://psidev.info/psi/pi/mzIdentML/1.1}'
+ns = "{http://psidev.info/psi/pi/mzIdentML/1.1}"
 
 #
 #  <Peptide id="Pep_SGLTPLHLVAQEGHVPVADVLIK-115HGVMVDATTR">
@@ -22,48 +22,54 @@ ns = '{http://psidev.info/psi/pi/mzIdentML/1.1}'
 #  </Peptide>
 #
 
-for pep in root.getiterator(ns+'Peptide'):
-    # print(ET.tostring(pep, encoding='utf8')) 
+for pep in root.getiterator(ns + "Peptide"):
+    # print(ET.tostring(pep, encoding='utf8'))
     dblmods = dict()
-    for mod in pep.findall(ns+'Modification'):
-        if mod.find(ns+'cvParam').get('name') in ('TMT6plex','TMTpro'):
-            pos = int(mod.get('location'))
+    for mod in pep.findall(ns + "Modification"):
+        if mod.find(ns + "cvParam").get("name") in ("TMT6plex", "TMTpro"):
+            pos = int(mod.get("location"))
             if pos not in dblmods:
-                dblmods[pos] = [None,None,None]
+                dblmods[pos] = [None, None, None]
             dblmods[pos][0] = mod
-        elif mod.find(ns+'cvParam').get('value') in ('TMT6plex','TMTpro'):
-            pos = int(mod.get('location'))
+        elif mod.find(ns + "cvParam").get("value") in ("TMT6plex", "TMTpro"):
+            pos = int(mod.get("location"))
             if pos not in dblmods:
-                dblmods[pos] = [None,None,None]
+                dblmods[pos] = [None, None, None]
             dblmods[pos][0] = mod
-        elif mod.find(ns+'cvParam').get('value') in ('GlyGlyInsteadOfTMT6plex','GlyGlyInsteadOfTMTpro'):
-            pos = int(mod.get('location'))
+        elif mod.find(ns + "cvParam").get("value") in (
+            "GlyGlyInsteadOfTMT6plex",
+            "GlyGlyInsteadOfTMTpro",
+        ):
+            pos = int(mod.get("location"))
             if pos not in dblmods:
-                dblmods[pos] = [None,None,None]
+                dblmods[pos] = [None, None, None]
             dblmods[pos][1] = mod
-        elif mod.find(ns+'cvParam').get('value') in ('AcetylInsteadOfTMT6plex','AcetylInsteadOfTMTpro'):
-            pos = int(mod.get('location'))
+        elif mod.find(ns + "cvParam").get("value") in (
+            "AcetylInsteadOfTMT6plex",
+            "AcetylInsteadOfTMTpro",
+        ):
+            pos = int(mod.get("location"))
             if pos not in dblmods:
-                dblmods[pos] = [None,None,None]
+                dblmods[pos] = [None, None, None]
             dblmods[pos][2] = mod
-    for pos,(m1,m2,m3) in dblmods.items():
+    for pos, (m1, m2, m3) in list(dblmods.items()):
         # print(pos,m1,m2,m3)
         if m2 is None and m3 is None:
             continue
-        assert(m1 is not None)
-        assert(m2 is None or m3 is None)
+        assert m1 is not None
+        assert m2 is None or m3 is None
         if m2 is not None:
             pep.remove(m2)
-            m1.set('monoisotopicMassDelta','114.042927')
-            cvp = m1.find(ns+'cvParam')
-            cvp.set('accession','UNIMOD:121')
-            cvp.set('name','GG')
+            m1.set("monoisotopicMassDelta", "114.042927")
+            cvp = m1.find(ns + "cvParam")
+            cvp.set("accession", "UNIMOD:121")
+            cvp.set("name", "GG")
         elif m3 is not None:
             pep.remove(m3)
-            m1.set('monoisotopicMassDelta','42.010565')
-            cvp = m1.find(ns+'cvParam')
-            cvp.set('accession','UNIMOD:1')
-            cvp.set('name','Acetyl')
+            m1.set("monoisotopicMassDelta", "42.010565")
+            cvp = m1.find(ns + "cvParam")
+            cvp.set("accession", "UNIMOD:1")
+            cvp.set("name", "Acetyl")
 
 # <SearchModification fixedMod="true" massDelta="229.16293" residues="K">
 #   <cvParam cvRef="UNIMOD" accession="UNIMOD:737" name="TMT6plex"/>
@@ -73,24 +79,30 @@ for pep in root.getiterator(ns+'Peptide'):
 # </SearchModification>
 
 
-for sm in root.getiterator(ns+'SearchModification'):
-    if sm.find(ns+'cvParam').get('name') in ("TMT6plex","TMTpro"):
-        sm.set('fixedMod','false')
-    elif sm.find(ns+'cvParam').get('value') in ("TMT6plex","TMTpro"):
-        sm.set('fixedMod','false')
-    elif sm.find(ns+'cvParam').get('value') in ("GlyGlyInsteadOfTMT6plex","GlyGlyInsteadOfTMTpro"):
-        cvp = sm.find(ns+'cvParam')
-        cvp.set('cvRef','UNIMOD')
-        cvp.set('accession','UNIMOD:121')
-        cvp.set('name','GG')
-        cvp.attrib.pop('value',None)
-        sm.set('massDelta','114.042927')
-    elif sm.find(ns+'cvParam').get('value') in ("AcetylInsteadOfTMT6plex","AcetylInsteadOfTMTpro"):
-        cvp = sm.find(ns+'cvParam')
-        cvp.set('cvRef','UNIMOD')
-        cvp.set('accession','UNIMOD:1')
-        cvp.set('name','Acetyl')
-        cvp.attrib.pop('value',None)
-        sm.set('massDelta','42.010565')
+for sm in root.getiterator(ns + "SearchModification"):
+    if sm.find(ns + "cvParam").get("name") in ("TMT6plex", "TMTpro"):
+        sm.set("fixedMod", "false")
+    elif sm.find(ns + "cvParam").get("value") in ("TMT6plex", "TMTpro"):
+        sm.set("fixedMod", "false")
+    elif sm.find(ns + "cvParam").get("value") in (
+        "GlyGlyInsteadOfTMT6plex",
+        "GlyGlyInsteadOfTMTpro",
+    ):
+        cvp = sm.find(ns + "cvParam")
+        cvp.set("cvRef", "UNIMOD")
+        cvp.set("accession", "UNIMOD:121")
+        cvp.set("name", "GG")
+        cvp.attrib.pop("value", None)
+        sm.set("massDelta", "114.042927")
+    elif sm.find(ns + "cvParam").get("value") in (
+        "AcetylInsteadOfTMT6plex",
+        "AcetylInsteadOfTMTpro",
+    ):
+        cvp = sm.find(ns + "cvParam")
+        cvp.set("cvRef", "UNIMOD")
+        cvp.set("accession", "UNIMOD:1")
+        cvp.set("name", "Acetyl")
+        cvp.attrib.pop("value", None)
+        sm.set("massDelta", "42.010565")
 
-print(ET.tostring(root, encoding='utf8')) 
+print((ET.tostring(root, encoding="utf8")))

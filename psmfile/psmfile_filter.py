@@ -1,64 +1,73 @@
 #!/bin/env python27
 
-import sys, os, os.path, csv, re, math
+import sys
+import os
+import os.path
+import csv
+import re
+import math
 from collections import defaultdict
 
 infile = sys.argv[1].strip()
 proms = sys.argv[2].strip()
 reporterfile = sys.argv[3].strip()
 outfile = sys.argv[4].strip()
-threshold = float(sys.argv[5])/100.0
+threshold = float(sys.argv[5]) / 100.0
 opts = dict()
 for arg in sys.argv[6:]:
     opts[arg] = True
 
 proms_format = None
-if proms not in ("None","",None):
+if proms not in ("None", "", None):
     proms_format = True
     firstword = open(proms).read(128).split()[0]
     if firstword == "Scan":
         proms_format = False
 
-promsdata = defaultdict(lambda: ('0','0.00000000','0'))
+promsdata = defaultdict(lambda: ("0", "0.00000000", "0"))
 if proms_format == False:
     maxarea = 0
-    for row in csv.DictReader(open(proms),dialect='excel-tab'):
-        scan = int(row['Scan'])
-        area = row['Area']
-        rt = row['RT']
-        status = int(row['Status'].split()[0])
+    for row in csv.DictReader(open(proms), dialect="excel-tab"):
+        scan = int(row["Scan"])
+        area = row["Area"]
+        rt = row["RT"]
+        status = int(row["Status"].split()[0])
         if status != 0:
             continue
         if float(area) <= 0:
             continue
         if float(area) > maxarea:
-	    maxarea = float(area)
-        promsdata[scan] = (area,None,rt)
+            maxarea = float(area)
+        promsdata[scan] = (area, None, rt)
     for scan in promsdata:
-        promsdata[scan] = (promsdata[scan][0],"%.8f"%(float(promsdata[scan][0])/maxarea,),promsdata[scan][2])
+        promsdata[scan] = (
+            promsdata[scan][0],
+            "%.8f" % (float(promsdata[scan][0]) / maxarea,),
+            promsdata[scan][2],
+        )
 
 if proms_format == True:
-    promsdata = defaultdict(lambda: ('0','0.00000000','0'))
+    promsdata = defaultdict(lambda: ("0", "0.00000000", "0"))
     h = open(proms)
     sec7 = False
     for l in h:
-	if l.strip() == 'Section 7 starts':
-	    sec7 = True
-	    continue
-	if l.strip() in ('end of section 7','End'):
-	    sec7 = False
+        if l.strip() == "Section 7 starts":
+            sec7 = True
             continue
-	if sec7:
-	    if l.startswith('Nvalues='):
-		continue
-	    sl = l.split()
-	    scan = int(sl[1])
-	    absprec = sl[21]
-	    relprec = sl[20]
-	    rthalfprec = sl[15]
-	    # note, leave all values as string...
-	    assert scan not in promsdata
-	    promsdata[scan] = (absprec,relprec,rthalfprec)
+        if l.strip() in ("end of section 7", "End"):
+            sec7 = False
+            continue
+        if sec7:
+            if l.startswith("Nvalues="):
+                continue
+            sl = l.split()
+            scan = int(sl[1])
+            absprec = sl[21]
+            relprec = sl[20]
+            rthalfprec = sl[15]
+            # note, leave all values as string...
+            assert scan not in promsdata
+            promsdata[scan] = (absprec, relprec, rthalfprec)
 
 labeling_metadata = """
 option    label    prefix   tags
@@ -69,9 +78,9 @@ tmt10     TMT10    TMT10-   126 127N 127C 128N 128C 129N 129C 130N 130C 131
 tmt10+2   TMT10,+2 TMT10-   126 127N 127C 128N 128C 129N 129C 130N 130C 131 131C 132N
 tmt11     TMT11    TMT11-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C
 tmt11+2   TMT11,+2 TMT11-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C
-tmt16     TMT16    TMT16-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C 133N 133C 134N              
+tmt16     TMT16    TMT16-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C 133N 133C 134N
 tmt16+2   TMT16,+2 TMT16-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C 133N 133C 134N 134C 135N
-tmt18     TMT18    TMT18-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C 133N 133C 134N 134C 135N    
+tmt18     TMT18    TMT18-   126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C 132N 132C 133N 133C 134N 134C 135N
 """
 
 labelingmd = dict()
@@ -82,84 +91,98 @@ for l in labeling_metadata.splitlines():
     if not headers:
         headers = l.split()
         continue
-    row = dict(zip(headers,l.split(None,3)))
-    row['tags'] = row['tags'].split()
+    row = dict(list(zip(headers, l.split(None, 3))))
+    row["tags"] = row["tags"].split()
     nextratags = 0
-    if ',' in row['label']:
-        nextratags = int(row['label'].split(',')[1])
-    row['fulltags'] = [ row['prefix'] + t for t in row['tags'][:(len(row['tags'])-nextratags)] ] + \
-                      [ re.sub(r'[0-9]','X',row['prefix']) + t for t in row['tags'][len(row['tags'])-nextratags:] ]
-    row['ntags'] = len(row['tags'])
-    labelingmd[row['option']] = row
+    if "," in row["label"]:
+        nextratags = int(row["label"].split(",")[1])
+    row["fulltags"] = [
+        row["prefix"] + t for t in row["tags"][: (len(row["tags"]) - nextratags)]
+    ] + [
+        re.sub(r"[0-9]", "X", row["prefix"]) + t
+        for t in row["tags"][len(row["tags"]) - nextratags :]
+    ]
+    row["ntags"] = len(row["tags"])
+    labelingmd[row["option"]] = row
 
-opts['labeling'] = None
+opts["labeling"] = None
 for labeling in labelingmd:
     if opts.get(labeling):
-        assert not opts.get('labeling')
-        opts['labeling'] = labeling
+        assert not opts.get("labeling")
+        opts["labeling"] = labeling
+
 
 def tofloat(v):
     try:
         return float(v)
-    except (TypeError,ValueError):
+    except (TypeError, ValueError):
         pass
     return None
 
+
 def round_to_n(x, n):
-    if not x: return 0
+    if not x:
+        return 0
     power = -int(math.floor(math.log10(abs(x)))) + (n - 1)
-    factor = (10 ** power)
+    factor = 10**power
     val = round(x * factor) / factor
     if round(val) == val:
         val = int(val)
     return val
 
+
 reporterdata = None
-if reporterfile not in ("None","",None):
+if reporterfile not in ("None", "", None):
     reporterdata = dict()
-    lmd = labelingmd[opts['labeling']]
-    for r in csv.reader(open(reporterfile),dialect='excel-tab'):
+    lmd = labelingmd[opts["labeling"]]
+    for r in csv.reader(open(reporterfile), dialect="excel-tab"):
         targetscan = int(r[0])
-        assert r[1] == lmd['label']
-        nlabels = lmd['ntags']
-        assert len(r) == 2+nlabels+nlabels+1
+        assert r[1] == lmd["label"]
+        nlabels = lmd["ntags"]
+        assert len(r) == 2 + nlabels + nlabels + 1
         p = 2
-        ab = r[p:(p+nlabels)]
-        abvals = map(tofloat,ab)
+        ab = r[p : (p + nlabels)]
+        abvals = list(map(tofloat, ab))
         assert None not in abvals
         p += nlabels
-        dmzhwhm = r[p:(p+nlabels)]
-        dmzhwhmvals = filter(lambda v: v != None,map(tofloat,dmzhwhm))
+        dmzhwhm = r[p : (p + nlabels)]
+        dmzhwhmvals = [v for v in map(tofloat, dmzhwhm) if v is not None]
         p += nlabels
         abfract = tofloat(r[p])
         data = dict()
         if max(abvals) == 0:
-            assert dmzhwhm.count('?') == len(dmzhwhm) and abfract == None
-            for t,abi,di in zip(lmd['fulltags'],ab,dmzhwhm):
+            assert dmzhwhm.count("?") == len(dmzhwhm) and abfract is None
+            for t, abi, di in zip(lmd["fulltags"], ab, dmzhwhm):
                 data[t] = abi
         else:
-            for t,abi,di in zip(lmd['fulltags'],ab,dmzhwhm):
-                data[t] = "%s/%s"%(abi,di)
-            data[lmd['prefix']+"FractionOfTotalAb"] = abfract
-        data[lmd['prefix']+"Abundance"] = abvals
-        data[lmd['prefix']+"dMz/HWHM"] = dmzhwhmvals
-        data[lmd['prefix']+"TotalAb"] = ("%.6g"%round_to_n(sum(abvals),6)).replace('e+','e+0')        
-        reporterdata[targetscan]= data
+            for t, abi, di in zip(lmd["fulltags"], ab, dmzhwhm):
+                data[t] = "%s/%s" % (abi, di)
+            data[lmd["prefix"] + "FractionOfTotalAb"] = abfract
+        data[lmd["prefix"] + "Abundance"] = abvals
+        data[lmd["prefix"] + "dMz/HWHM"] = dmzhwhmvals
+        data[lmd["prefix"] + "TotalAb"] = ("%.6g" % round_to_n(sum(abvals), 6)).replace(
+            "e+", "e+0"
+        )
+        reporterdata[targetscan] = data
 
-# csv module cannot handle fields with very large numbers of characters in them. Why?
+# csv module cannot handle fields with very large numbers of characters in
+# them. Why?
+
+
 def mytsvdictreader(fh):
     headers = None
     for l in fh:
-        sl = l.rstrip().split('\t')
+        sl = l.rstrip().split("\t")
         if not headers:
             headers = sl
             continue
-        yield dict(zip(headers,sl))
+        yield dict(list(zip(headers, sl)))
+
 
 # inrows = csv.DictReader(open(infile),dialect='excel-tab')
 inrows = mytsvdictreader(open(infile))
 
-simplefieldre = re.compile(r'^(\w+):(\d+(\.\d+)?(eV|\?)?)$')
+simplefieldre = re.compile(r"^(\w+):(\d+(\.\d+)?(eV|\?)?)$")
 
 ambigscans = set()
 
@@ -181,18 +204,24 @@ QValue              Qvalue
 PepQValue           PepQvalue
 HCD                 HCDEnergy
 """
-headermapping = dict(map(str.split,filter(lambda s: s.strip() != "",headermapping.splitlines())))
+headermapping = dict(
+    list(map(str.split, [s for s in headermapping.splitlines() if s.strip() != ""]))
+)
 
-def manipulate_rows(rows,qvalthr):
-    lastscan=None; lastscore = None
+
+def manipulate_rows(rows, qvalthr):
+    lastscan = None
+    lastscore = None
     for r in rows:
-        scan,title,qvalue,score,pepseq = map(r.get,('ScanNum','Title','QValue','MSGFScore','Peptide'))
-	if scan == 'ScanNum':
-	    # extra header row, ignore
-	    continue
-        if qvalue == None:
-            qvalue = r.get('Qvalue')
-        qvalue = float(qvalue);
+        scan, title, qvalue, score, pepseq = list(
+            map(r.get, ("ScanNum", "Title", "QValue", "MSGFScore", "Peptide"))
+        )
+        if scan == "ScanNum":
+            # extra header row, ignore
+            continue
+        if qvalue is None:
+            qvalue = r.get("Qvalue")
+        qvalue = float(qvalue)
         if qvalue > qvalthr:
             continue
 
@@ -201,26 +230,30 @@ def manipulate_rows(rows,qvalthr):
             if score < lastscore:
                 trank += 1
         else:
-            rank = 1; trank = 1
-        lastscan = scan; lastscore = score
-        for k,v in r.items():
-            if k in ('PrecursorArea','PrecursorRelAb','RTAtPrecursorHalfElution'):
+            rank = 1
+            trank = 1
+        lastscan = scan
+        lastscore = score
+        for k, v in list(r.items()):
+            if k in ("PrecursorArea", "PrecursorRelAb", "RTAtPrecursorHalfElution"):
                 continue
             try:
                 r[k] = float(v)
                 r[k] = int(v)
             except ValueError:
                 pass
-        r['Index'] = rank; r['Rank'] = trank
+        r["Index"] = rank
+        r["Rank"] = trank
         if rank > 1:
             ambigscans.add(int(scan))
         # Filter may have spaces in it, but it is last field in the string...
-	if title:
-             rest,filter = title.rsplit('Filter:',1)
-	else:
-	     rest = ""; filter = ""
-        r['Filter'] = filter.strip()
-	# print r['ScanNum']
+        if title:
+            rest, filter = title.rsplit("Filter:", 1)
+        else:
+            rest = ""
+            filter = ""
+        r["Filter"] = filter.strip()
+        # print r['ScanNum']
         ppvals = None
         for keyval in rest.split():
             # print repr(keyval)
@@ -236,275 +269,327 @@ def manipulate_rows(rows,qvalthr):
                 r[key] = value
                 # print repr(key),repr(value)
                 continue
-            if keyval.startswith('pp:'):
+            if keyval.startswith("pp:"):
                 key = "PrecursorPurity"
                 value = keyval[3:]
-		value = value.replace('?','0.0')
+                value = value.replace("?", "0.0")
                 try:
-                    ppvals = map(float,value.split(','))
+                    ppvals = list(map(float, value.split(",")))
                 except ValueError:
                     ppvals = None
                 r[key] = value
                 # print repr(key),repr(value)
-		try:
-	            ppv1 = 100.0*r['IRI-1:p%']/r['IRI-1:c%']
-		except KeyError:
-		    ppv1 = 0.0
-		try:
-	            ppv2 = 100.0*r['IRI-2:p%']/r['IRI-2:c%']
-		except KeyError:
-		    ppv2 = 0.0
-		r[key] = "%.1f,%.1f"%(round(ppv1,1),round(ppv2,1))
-		ppvals = [ppv1,ppv2]
-		# if r['ScanNum'] == 3790:
-		#    print ppvals,map(lambda v: round(v,1),ppvals),map(lambda v: "%.1f"%v,ppvals)
+                try:
+                    ppv1 = 100.0 * r["IRI-1:p%"] / r["IRI-1:c%"]
+                except KeyError:
+                    ppv1 = 0.0
+                try:
+                    ppv2 = 100.0 * r["IRI-2:p%"] / r["IRI-2:c%"]
+                except KeyError:
+                    ppv2 = 0.0
+                r[key] = "%.1f,%.1f" % (round(ppv1, 1), round(ppv2, 1))
+                ppvals = [ppv1, ppv2]
+                # if r['ScanNum'] == 3790:
+                # print ppvals,map(lambda v: round(v,1),ppvals),map(lambda v:
+                # "%.1f"%v,ppvals)
                 continue
-	    if keyval.startswith('IRI-1('):
-		m = re.search(r'^IRI-1\((.*)\)(;([^;]*))?(;([^;]*))?$',keyval)
-		assert m and m.group(1), keyval
-		if m.group(1):
-		    srest = re.split(r',([a-zA-Z/%0-9]+):',m.group(1))
+            if keyval.startswith("IRI-1("):
+                m = re.search(r"^IRI-1\((.*)\)(;([^;]*))?(;([^;]*))?$", keyval)
+                assert m and m.group(1), keyval
+                if m.group(1):
+                    srest = re.split(r",([a-zA-Z/%0-9]+):", m.group(1))
                     # print srest
-                    for i in range(1,len(srest),2):
+                    for i in range(1, len(srest), 2):
                         k = srest[i]
-                        v = srest[i+1]                                                                           
-                        if k in ('c%',) and 'IRI-1:'+k not in r:
-			    try:
-                                r['IRI-1:'+k] = float(v)
-			    except ValueError:
-				pass
-		if m.group(2):
-		    srest = re.split(r',([a-zA-Z/%0-9]+):',m.group(3))
-		    # print srest
-		    for i in range(1,len(srest),2):
-		        k = srest[i]
-		        v = srest[i+1]
-		        if k in ('f2e%','p%') and 'IRI-1:'+k not in r:
-			    try:
-			        r['IRI-1:'+k] = float(v)
-			    except ValueError:
-				pass
-	    if keyval.startswith('IRI-2('):
-		m = re.search(r'^IRI-2\((.*)\)(;([^;]*))?(;([^;]*))?$',keyval)
-		assert m and m.group(1), keyval
-		if m.group(1):
-		    srest = re.split(r',([a-zA-Z/%0-9]+):',m.group(1))
-		    # print srest
-		    for i in range(1,len(srest),2):
-		        k = srest[i]
-		        v = srest[i+1]
-		        if k in ('c%',) and 'IRI-2:'+k not in r:
-			    try:
-			        r['IRI-2:'+k] = float(v)
-			    except ValueError:
-				pass
-		if m.group(2):
-		    srest = re.split(r',([a-zA-Z/%0-9]+):',m.group(3))
-		    # print srest
-		    for i in range(1,len(srest),2):
-		        k = srest[i]
-		        v = srest[i+1]
-		        if k in ('f2e%','p%') and 'IRI-2:'+k not in r:
-			    try:
-			        r['IRI-2:'+k] = float(v)
-			    except ValueError:
-				pass
-	    if keyval.startswith('LT2/t:'):
-	        key = 'LT2/t'
-		try:
-		    value = float(keyval[6:])
-		except ValueError:
-		    value = 0.0
-		r[key] = value
-            if keyval.startswith('HCD='):
+                        v = srest[i + 1]
+                        if k in ("c%",) and "IRI-1:" + k not in r:
+                            try:
+                                r["IRI-1:" + k] = float(v)
+                            except ValueError:
+                                pass
+                if m.group(2):
+                    srest = re.split(r",([a-zA-Z/%0-9]+):", m.group(3))
+                    # print srest
+                    for i in range(1, len(srest), 2):
+                        k = srest[i]
+                        v = srest[i + 1]
+                        if k in ("f2e%", "p%") and "IRI-1:" + k not in r:
+                            try:
+                                r["IRI-1:" + k] = float(v)
+                            except ValueError:
+                                pass
+            if keyval.startswith("IRI-2("):
+                m = re.search(r"^IRI-2\((.*)\)(;([^;]*))?(;([^;]*))?$", keyval)
+                assert m and m.group(1), keyval
+                if m.group(1):
+                    srest = re.split(r",([a-zA-Z/%0-9]+):", m.group(1))
+                    # print srest
+                    for i in range(1, len(srest), 2):
+                        k = srest[i]
+                        v = srest[i + 1]
+                        if k in ("c%",) and "IRI-2:" + k not in r:
+                            try:
+                                r["IRI-2:" + k] = float(v)
+                            except ValueError:
+                                pass
+                if m.group(2):
+                    srest = re.split(r",([a-zA-Z/%0-9]+):", m.group(3))
+                    # print srest
+                    for i in range(1, len(srest), 2):
+                        k = srest[i]
+                        v = srest[i + 1]
+                        if k in ("f2e%", "p%") and "IRI-2:" + k not in r:
+                            try:
+                                r["IRI-2:" + k] = float(v)
+                            except ValueError:
+                                pass
+            if keyval.startswith("LT2/t:"):
+                key = "LT2/t"
+                try:
+                    value = float(keyval[6:])
+                except ValueError:
+                    value = 0.0
+                r[key] = value
+            if keyval.startswith("HCD="):
                 key = "HCD"
                 value = keyval[4:]
                 r[key] = value
                 # print repr(key),repr(value)
                 continue
-            if not reporterdata and keyval.startswith('iTRAQ4_'):
-                tags = (114,115,116,117)
-		ab = []; abfract = None; abvals = []
-		dmzhwhm = ['']; dmzhwhmvals = []
-                for m in re.finditer(r'_([^(]+)\(([^)]+)\)',keyval):
-                    if m.group(1) == 'ab':
-                        ab = m.group(2).split(',')
-			for v in ab:
+            if not reporterdata and keyval.startswith("iTRAQ4_"):
+                tags = (114, 115, 116, 117)
+                ab = []
+                abfract = None
+                abvals = []
+                dmzhwhm = [""]
+                dmzhwhmvals = []
+                for m in re.finditer(r"_([^(]+)\(([^)]+)\)", keyval):
+                    if m.group(1) == "ab":
+                        ab = m.group(2).split(",")
+                        for v in ab:
                             try:
-				v = abvals.append(float(v))
+                                v = abvals.append(float(v))
                             except ValueError:
-				pass
-                    elif m.group(1) == 'dMz/HWHM':
-                        dmzhwhm = m.group(2).split(',')
-			for v in dmzhwhm:
+                                pass
+                    elif m.group(1) == "dMz/HWHM":
+                        dmzhwhm = m.group(2).split(",")
+                        for v in dmzhwhm:
                             try:
-				dmzhwhmvals.append(float(v))
+                                dmzhwhmvals.append(float(v))
                             except ValueError:
-				pass
-                    elif m.group(1) == 'AbFract':
+                                pass
+                    elif m.group(1) == "AbFract":
                         abfract = float(m.group(2))
-                for t,v1,v2 in zip(tags,ab,dmzhwhm):
-                    r["iTRAQ"+str(t)] = "%s/%s"%(v1,v2)
-		if abfract != None:
+                for t, v1, v2 in zip(tags, ab, dmzhwhm):
+                    r["iTRAQ" + str(t)] = "%s/%s" % (v1, v2)
+                if abfract is not None:
                     r["iTRAQFractionOfTotalAb"] = abfract
-		if len(ab) > 0:
-                  r["iTRAQTotalAb"] = ("%.6g"%round_to_n(sum(map(float,ab)),6)).replace('e+','e+0')
+                if len(ab) > 0:
+                    r["iTRAQTotalAb"] = (
+                        "%.6g" % round_to_n(sum(map(float, ab)), 6)
+                    ).replace("e+", "e+0")
                 continue
-            if not reporterdata and (keyval.startswith('TMT10_') or keyval.startswith('TMT11_') or keyval.startswith('TMT6_')):
-	        if keyval.startswith('TMT10_'):
-		    prefix="TMT10"
+            if not reporterdata and (
+                keyval.startswith("TMT10_")
+                or keyval.startswith("TMT11_")
+                or keyval.startswith("TMT6_")
+            ):
+                if keyval.startswith("TMT10_"):
+                    prefix = "TMT10"
                     tags = "126 127N 127C 128N 128C 129N 129C 130N 130C 131".split()
-	        elif keyval.startswith('TMT6_'):
-		    prefix="TMT6"
+                elif keyval.startswith("TMT6_"):
+                    prefix = "TMT6"
                     tags = "126 127 128 129 130 131".split()
-		elif keyval.startswith('TMT11_'):
-		    prefix="TMT11"
-                    tags = "126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C".split()
-		else:
-		    raise RuntimeError("Problem with TMT key-values")
-		
-		ab = []; abfract = None; abvals = []
-		dmzhwhm = ['']*len(tags); dmzhwhmvals = []
-		# print "----------------------------------------------"
-		# print keyval
-                for m in re.finditer(r'_([^(]+)\(([^)]+)\)',keyval):
-		    # print m.group(1),m.group(2)
-                    if m.group(1) == 'ab':
-                        ab = m.group(2).split(',')
-			for v in ab:
+                elif keyval.startswith("TMT11_"):
+                    prefix = "TMT11"
+                    tags = (
+                        "126C 127N 127C 128N 128C 129N 129C 130N 130C 131N 131C".split()
+                    )
+                else:
+                    raise RuntimeError("Problem with TMT key-values")
+
+                ab = []
+                abfract = None
+                abvals = []
+                dmzhwhm = [""] * len(tags)
+                dmzhwhmvals = []
+                # print "----------------------------------------------"
+                # print keyval
+                for m in re.finditer(r"_([^(]+)\(([^)]+)\)", keyval):
+                    # print m.group(1),m.group(2)
+                    if m.group(1) == "ab":
+                        ab = m.group(2).split(",")
+                        for v in ab:
                             try:
-				v = abvals.append(float(v))
+                                v = abvals.append(float(v))
                             except ValueError:
-				pass
-                    elif m.group(1) == 'dMz/HWHM':
-                        dmzhwhm = m.group(2).split(',')
-			for v in dmzhwhm:
+                                pass
+                    elif m.group(1) == "dMz/HWHM":
+                        dmzhwhm = m.group(2).split(",")
+                        for v in dmzhwhm:
                             try:
-				dmzhwhmvals.append(float(v))
+                                dmzhwhmvals.append(float(v))
                             except ValueError:
-				pass
-		    elif m.group(1) == 'AbFract':
+                                pass
+                    elif m.group(1) == "AbFract":
                         abfract = float(m.group(2))
-		if len(ab) == 0:
-		    continue
-		assert len(tags) == len(ab) and len(tags) == len(dmzhwhm)
-                for t,v1,v2 in zip(tags,ab,dmzhwhm):
-		    if v2 == "":
-                        r[prefix+"-"+str(t)] = "%s"%(v1,)
-		    else:
-                        r[prefix+"-"+str(t)] = "%s/%s"%(v1,v2)
-		if abfract != None:
-                    r[prefix+"-FractionOfTotalAb"] = abfract
-		if len(ab) > 0:
-                    r[prefix+"-TotalAb"] = ("%.6g"%round_to_n(sum(map(float,ab)),6)).replace('e+','e+0')
+                if len(ab) == 0:
+                    continue
+                assert len(tags) == len(ab) and len(tags) == len(dmzhwhm)
+                for t, v1, v2 in zip(tags, ab, dmzhwhm):
+                    if v2 == "":
+                        r[prefix + "-" + str(t)] = "%s" % (v1,)
+                    else:
+                        r[prefix + "-" + str(t)] = "%s/%s" % (v1, v2)
+                if abfract is not None:
+                    r[prefix + "-FractionOfTotalAb"] = abfract
+                if len(ab) > 0:
+                    r[prefix + "-TotalAb"] = (
+                        "%.6g" % round_to_n(sum(map(float, ab)), 6)
+                    ).replace("e+", "e+0")
                     # r["TMT10-TotalAb"] = ("%.6g"%sum(map(float,ab))).replace('e+','e+0')
-		    # if r["ScanNum"] in (7902,16886):
-		    #     print sum(map(float,ab)),round_to_n(sum(map(float,ab)),6),"%.6g"%sum(map(float,ab))
-		# print r
+                    # if r["ScanNum"] in (7902,16886):
+                    #     print sum(map(float,ab)),round_to_n(sum(map(float,ab)),6),"%.6g"%sum(map(float,ab))
+                # print r
                 continue
 
-        for k,v in headermapping.items():
+        for k, v in list(headermapping.items()):
             if k in r:
                 r[v] = r[k]
 
-        abvals = []; dmzhwhmvals = []; ppvals = None;
+        abvals = []
+        dmzhwhmvals = []
+        ppvals = None
         if reporterdata:
-            if r['ScanNum'] in reporterdata:
-                lmd = labelingmd[opts['labeling']]
-                r.update(reporterdata[r['ScanNum']])
-                abvals = reporterdata[r['ScanNum']][lmd['prefix']+'Abundance']
-                dmzhwhmvals = reporterdata[r['ScanNum']][lmd['prefix']+'dMz/HWHM']
+            if r["ScanNum"] in reporterdata:
+                lmd = labelingmd[opts["labeling"]]
+                r.update(reporterdata[r["ScanNum"]])
+                abvals = reporterdata[r["ScanNum"]][lmd["prefix"] + "Abundance"]
+                dmzhwhmvals = reporterdata[r["ScanNum"]][lmd["prefix"] + "dMz/HWHM"]
             else:
-                lmd = labelingmd[opts['labeling']]
-                for t in lmd['fulltags']:
+                lmd = labelingmd[opts["labeling"]]
+                for t in lmd["fulltags"]:
                     r[t] = 0
-                r[lmd['prefix']+'TotalAb'] = 0
-                abvals = [0]*len(lmd['tags']); dmzhwhmvals = [];
+                r[lmd["prefix"] + "TotalAb"] = 0
+                abvals = [0] * len(lmd["tags"])
+                dmzhwhmvals = []
 
-        if opts.get('labeling'):
-            lmd = labelingmd[opts['labeling']]
-            flagkey = lmd['prefix']+"Flags"
+        if opts.get("labeling"):
+            lmd = labelingmd[opts["labeling"]]
+            flagkey = lmd["prefix"] + "Flags"
             r[flagkey] = ""
             if len(abvals) > 0 and min(abvals) == 0.0:
                 r[flagkey] += "M"
-            if len(dmzhwhmvals) > 0 and max(map(abs,dmzhwhmvals)) > 1:
+            if len(dmzhwhmvals) > 0 and max(list(map(abs, dmzhwhmvals))) > 1:
                 r[flagkey] += "D"
-            if ppvals != None and math.sqrt(ppvals[0]*ppvals[1])<90:
+            if ppvals is not None and math.sqrt(ppvals[0] * ppvals[1]) < 90:
                 r[flagkey] += "I"
 
-	def decomp(f2e,LT2_t):
-	    # print f2e,LT2_t,
-	    f2e /= 100.0
-	    c_b_1 = 1.0/f2e
-	    a_b = LT2_t * c_b_1 - c_b_1
-	    # print a_b/(1.0 + a_b),
-	    return a_b/(1.0 + a_b)
-	
-	# print r['ScanNum'],
-	try:
-	    r['LT2/t'] = 10.0**float(r['LT2/t'])
-	except (ValueError, TypeError, KeyError):
-	    r['LT2/t'] = 10.0**0
-	val = []
-	for i in (1,2):
-	  key = 'IRI-%d:f2e%%'%i
-	  if r.get(key,-1) >= 0:
-	    f2e = r[key]
-	    if f2e == 0.0:
-		val.append('100.0')
-	    else:
-		val.append("%.1f"%(100.0*decomp(f2e,r['LT2/t'],)))
-	  else:
-	    val.append('?')
-	# print
-	r['FractionDecomposition'] = ','.join(val)
+        def decomp(f2e, LT2_t):
+            # print f2e,LT2_t,
+            f2e /= 100.0
+            c_b_1 = 1.0 / f2e
+            a_b = LT2_t * c_b_1 - c_b_1
+            # print a_b/(1.0 + a_b),
+            return a_b / (1.0 + a_b)
+
+        # print r['ScanNum'],
+        try:
+            r["LT2/t"] = 10.0 ** float(r["LT2/t"])
+        except (ValueError, TypeError, KeyError):
+            r["LT2/t"] = 10.0**0
+        val = []
+        for i in (1, 2):
+            key = "IRI-%d:f2e%%" % i
+            if r.get(key, -1) >= 0:
+                f2e = r[key]
+                if f2e == 0.0:
+                    val.append("100.0")
+                else:
+                    val.append(
+                        "%.1f"
+                        % (
+                            100.0
+                            * decomp(
+                                f2e,
+                                r["LT2/t"],
+                            )
+                        )
+                    )
+            else:
+                val.append("?")
+        # print
+        r["FractionDecomposition"] = ",".join(val)
 
         # Recompute PrecursorError(ppm) based on??????
 
-	if r.get('OriginalPrecursorMz'):
-            r['OriginalPrecursorMz'] = "%0.4f"%r['OriginalPrecursorMz']
-	elif r.get('PrecursorMonoisoMZ'):
-            r['OriginalPrecursorMz'] = "%0.4f"%r['PrecursorMonoisoMZ']
-	elif r.get('ms1PrecursorMZ'):
-	    r['OriginalPrecursorMz'] = "%0.4f"%r['ms1PrecursorMZ']
-	else:
-	    r['OriginalPrecursorMz'] = ""
+        if r.get("OriginalPrecursorMz"):
+            r["OriginalPrecursorMz"] = "%0.4f" % r["OriginalPrecursorMz"]
+        elif r.get("PrecursorMonoisoMZ"):
+            r["OriginalPrecursorMz"] = "%0.4f" % r["PrecursorMonoisoMZ"]
+        elif r.get("ms1PrecursorMZ"):
+            r["OriginalPrecursorMz"] = "%0.4f" % r["ms1PrecursorMZ"]
+        else:
+            r["OriginalPrecursorMz"] = ""
 
-	if r['FileName'].endswith('.mgf'):
-            r['FileName'] = (r['FileName'][:-3]+'raw')
-	elif r['FileName'].endswith('.mzML'):
-            r['FileName'] = (r['FileName'][:-4]+'raw')
+        if r["FileName"].endswith(".mgf"):
+            r["FileName"] = r["FileName"][:-3] + "raw"
+        elif r["FileName"].endswith(".mzML"):
+            r["FileName"] = r["FileName"][:-4] + "raw"
 
-        global haveprecarea, haveambigmatch, havePhosphoRSPeptide 
+        global haveprecarea, haveambigmatch, havePhosphoRSPeptide
         if r.get("PrecursorArea"):
-             haveprecarea = True
+            haveprecarea = True
         if r.get("AmbiguousMatch"):
-             haveambigmatch = True
+            haveambigmatch = True
         if r.get("PhosphoRSPeptide"):
-             havePhosphoRSPeptide = True
+            havePhosphoRSPeptide = True
 
         yield r
 
-def setambig(scans,rows):
+
+def setambig(scans, rows):
     for r in rows:
         if not haveambigmatch:
-            if r['ScanNum'] in scans:
-                r['AmbiguousMatch'] = 1
+            if r["ScanNum"] in scans:
+                r["AmbiguousMatch"] = 1
             else:
-                r['AmbiguousMatch'] = 0
+                r["AmbiguousMatch"] = 0
         yield r
 
-def addproms(promsdata,rows):
-    for r in rows:
-        if proms not in (None,"","None"):
-	    r.update(dict(zip(('PrecursorArea','PrecursorRelAb','RTAtPrecursorHalfElution'),promsdata[r['ScanNum']])))
-	yield r
 
-# Sorted forces all rows to be instatiated, so ambigscans is set by the time it is used...
-outrows = addproms(promsdata,
-              setambig(ambigscans,
-                  sorted(manipulate_rows(inrows,threshold), 
-			 key=lambda r: map(r.get,('Scan','Index')))))
+def addproms(promsdata, rows):
+    for r in rows:
+        if proms not in (None, "", "None"):
+            r.update(
+                dict(
+                    list(
+                        zip(
+                            (
+                                "PrecursorArea",
+                                "PrecursorRelAb",
+                                "RTAtPrecursorHalfElution",
+                            ),
+                            promsdata[r["ScanNum"]],
+                        )
+                    )
+                )
+            )
+        yield r
+
+
+# Sorted forces all rows to be instatiated, so ambigscans is set by the
+# time it is used...
+outrows = addproms(
+    promsdata,
+    setambig(
+        ambigscans,
+        sorted(
+            manipulate_rows(inrows, threshold),
+            key=lambda r: list(map(r.get, ("Scan", "Index"))),
+        ),
+    ),
+)
 
 # Basic/common headers
 outheaders = """
@@ -529,24 +614,28 @@ FractionDecomposition
 HCDEnergy
 """.split()
 # Insert ProMS headers immediately before PeptideSequence
-if proms not in ("None","",None) or haveprecarea:
-    outheaders.insert(outheaders.index('PeptideSequence'),"PrecursorArea")
-    outheaders.insert(outheaders.index('PeptideSequence'),"PrecursorRelAb")
-    outheaders.insert(outheaders.index('PeptideSequence'),"RTAtPrecursorHalfElution")
+if proms not in ("None", "", None) or haveprecarea:
+    outheaders.insert(outheaders.index("PeptideSequence"), "PrecursorArea")
+    outheaders.insert(outheaders.index("PeptideSequence"), "PrecursorRelAb")
+    outheaders.insert(outheaders.index("PeptideSequence"), "RTAtPrecursorHalfElution")
 
 # Append Reporter Ion headers at the end
-if opts.get('labeling'):
-    lmd = labelingmd[opts['labeling']]
-    for t in lmd['fulltags']:
+if opts.get("labeling"):
+    lmd = labelingmd[opts["labeling"]]
+    for t in lmd["fulltags"]:
         outheaders.append(t)
-    outheaders.append(lmd['prefix']+'Flags')
-    outheaders.append(lmd['prefix']+'FractionOfTotalAb')
-    outheaders.append(lmd['prefix']+'TotalAb')
+    outheaders.append(lmd["prefix"] + "Flags")
+    outheaders.append(lmd["prefix"] + "FractionOfTotalAb")
+    outheaders.append(lmd["prefix"] + "TotalAb")
 
 # Insert Phospho header at the end (after iTRAQ/TMT if present)
-if opts.get('phospho') or havePhosphoRSPeptide:
-    outheaders.extend('PhosphoRSPeptide	nPhospho	FullyLocalized'.split())
-writer=csv.DictWriter(open(outfile,'w'),fieldnames=outheaders,extrasaction='ignore',dialect='excel-tab')
+if opts.get("phospho") or havePhosphoRSPeptide:
+    outheaders.extend("PhosphoRSPeptide	nPhospho	FullyLocalized".split())
+writer = csv.DictWriter(
+    open(outfile, "w"),
+    fieldnames=outheaders,
+    extrasaction="ignore",
+    dialect="excel-tab",
+)
 writer.writeheader()
 writer.writerows(outrows)
-
